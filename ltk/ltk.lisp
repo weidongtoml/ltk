@@ -240,6 +240,8 @@ toplevel             x
            #:iconify
            #:iconwindow
            #:image-load
+           #:image-copy
+           #:image-getpixel
            #:image-setpixel
            #:cursor-index
            #:input-box
@@ -3444,6 +3446,44 @@ set y [winfo y ~a]
   ;(format t "loading file ~a~&" filename)
   (send-wish (format nil "~A read {~A} -shrink" (name p) filename))
   p)
+
+(defun list-of-numbers->str (list)
+  "Convert a list to string without the paranthesis."
+  (let ((s (format nil "~A" list)))
+    (subseq s 1 (1- (length s)))))
+
+(defun split-by-one-space (string)
+    "Returns a list of substrings of string divided by ONE space each."
+    (loop for i = 0 then (1+ j)
+          as j = (position #\Space string :start i)
+          collect (subseq string i j)
+          while j))
+
+(defun parse-list-of-integer (string)
+  (mapcar #'parse-integer (split-by-one-space string)))
+
+(defgeneric image-copy (p source-image &key from to shrink zoom))
+(defmethod image-copy ((p photo-image) source-image
+                                       &key (from '()) (to '()) (shrink nil) (zoom '()))
+  "Copy data from source image and resize if directed."
+  (format-wish "~A copy ~A ~A ~A ~A ~A"
+    (name p)
+    (name source-image)
+    (if (null from) ""
+        (concatenate 'string "-from "
+          (list-of-numbers->str from)))
+    (if (null to) "" (concatenate 'string "-to "
+                       (list-of-numbers->str to)))
+    (if (not shrink) "" "-shrink")
+    (if (null zoom) "" (concatenate 'string "-zoom "
+                         (list-of-numbers->str zoom))))
+  p)
+
+(defgeneric image-getpixel (p x y))
+(defmethod image-getpixel ((p photo-image) x y)
+  "Returns the color of the pixel at coordinates (x, y) in the image as a list of three integers."
+  (format-wish "senddatastring [~A get ~A ~A]" (name p) x y)
+  (parse-list-of-integer (read-data)))
 
 (defgeneric ishow (p name))
 (defmethod ishow((p photo-image) name)
