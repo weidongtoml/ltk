@@ -240,9 +240,13 @@ toplevel             x
            #:iconify
            #:iconwindow
            #:image-load
+           #:image-write
            #:image-copy
+           #:image-blank
            #:image-getpixel
            #:image-setpixel
+           #:image-transparency-get
+           #:image-transparency-set
            #:cursor-index
            #:input-box
            #:insert-object
@@ -3484,6 +3488,44 @@ set y [winfo y ~a]
   "Returns the color of the pixel at coordinates (x, y) in the image as a list of three integers."
   (format-wish "senddatastring [~A get ~A ~A]" (name p) x y)
   (parse-list-of-integer (read-data)))
+
+(defgeneric image-transparency-get (p x y))
+(defmethod image-transparency-get ((p photo-image) x y)
+  (format-wish "senddata [~A transparency get ~A ~A]" (name p) x y)
+  (read-data))
+
+(defgeneric image-transparency-set (p x y transparent-p))
+(defmethod image-transparency-set ((p photo-image) x y transparent-p)
+  (format-wish "~A transparency set ~A ~A ~A"
+               (name p)
+               x
+               y
+               (if transparent-p "true" "false")))
+
+(defmethod cget ((p photo-image) option)
+  (format-wish "senddatastring [~a cget -~(~a~)]" (name p) option)
+  (let ((data (read-data)))
+    (cond ((or (eql :width option)
+               (eql :height option))
+           (parse-integer data))
+          (t data))))
+
+(defgeneric image-write (p filename &key background format from grayscale))
+(defmethod image-write ((p photo-image) filename &key (background "") (format "") (from '()) (grayscale nil))
+  (format-wish "~A write {~A} ~A ~A ~A ~A"
+               (name p)
+               filename
+               (if (= (length background) 0) ""
+                   (format nil "-background ~A" background))
+               (if (= (length format) 0) ""
+                   (format nil "-format ~A" format))
+               (if (= (length from) 0) ""
+                   (format nil "-from ~A" (list-of-numbers->str from)))
+               (if (not grayscale) "" "-grayscale")))
+
+(defgeneric image-blank (p))
+(defmethod image-blank ((p photo-image))
+  (format-wish "~A blank" (name p)))
 
 (defgeneric ishow (p name))
 (defmethod ishow((p photo-image) name)
